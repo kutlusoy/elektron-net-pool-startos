@@ -1,0 +1,76 @@
+# Sideload build
+#
+# Builds the .s9pk on demand or when a release tag is pushed and:
+#   * uploads it as a GitHub Actions artifact (always)
+#   * attaches it to a GitHub Release named
+#       "Elektron Net Pool StartOS Release v<X.Y.Z>"
+#     (only when triggered by a tag matching `elektron-net-pool-v*`)
+#
+# Download the .s9pk from the run / release page and sideload it onto
+# your StartOS server via:
+#
+#   StartOS UI -> System -> Sideload Service -> upload the .s9pk
+#
+# This workflow is independent of the Start9 marketplace pipeline
+# (release.yml / tagAndRelease.yml). No secrets and no S3 / registry
+# configuration are required: the upstream shared-workflow generates an
+# ephemeral developer signing key on the fly when DEV_KEY is not set.
+#
+# To produce a build, either:
+#   * push a tag matching `elektron-net-pool-v*`
+#       git tag elektron-net-pool-v0.1.0 && git push origin elektron-net-pool-v0.1.0
+#   * or run it manually: Actions -> Sideload -> Run workflow
+
+name: Sideload
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'elektron-net-pool-v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: start9labs/shared-workflows/.github/workflows/build.yml@master
+    # with:
+    #   FREE_DISK_SPACE: true
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/elektron-net-pool-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download s9pk artifacts from build job
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: '*.s9pk'
+          merge-multiple: true
+
+      - name: Show downloaded files
+        run: ls -la artifacts
+
+      - name: Derive version from tag
+        id: version
+        run: |
+          TAG='${{ github.ref_name }}'
+          VERSION="${TAG#elektron-net-pool-}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Tag '${TAG}' -> version '${VERSION}'"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Elektron Net Pool StartOS Release ${{ steps.version.outputs.version }}"
+          prerelease: ${{ contains(steps.version.outputs.version, '-rc') }}
+          files: artifacts/*.s9pk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
