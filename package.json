@@ -6,7 +6,8 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@start9labs/start-sdk": "1.5.3"
+    "@start9labs/start-sdk": "1.5.3",
+    "elektron-net-startos": "github:kutlusoy/elektron-net-startos#main"
   },
   "devDependencies": {
     "@types/node": "^22.19.7",
