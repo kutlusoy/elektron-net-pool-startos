@@ -1,6 +1,6 @@
 FROM node:24-bookworm-slim AS build
 
-ARG ELEKTRON_POOL_REF=main
+ARG ELEKTRON_POOL_REF=claude/practical-ptolemy-ghfoy8
 ARG ELEKTRON_POOL_UI_REF=main
 
 RUN \
