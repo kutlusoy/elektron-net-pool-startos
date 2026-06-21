@@ -33,7 +33,14 @@ anyway.
    ```sh
    git tag elektron-net-pool-v0.1.0
    git push origin elektron-net-pool-v0.1.0
+
+   if to delete and tag new
+
+   git tag -d elektron-net-pool-v0.1.0 && git push origin :elektron-net-pool-v0.1.0 && git tag elektron-net-pool-v0.1.0 && git push origin elektron-net-pool-v0.1.0
+
    ```
+
+   
 
    Or trigger it manually under **Actions → Sideload → Run workflow**.
 2. When the run finishes, open it and download the `.s9pk` from the
