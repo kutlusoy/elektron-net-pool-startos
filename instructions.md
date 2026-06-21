@@ -13,31 +13,31 @@ StartOS.
 - An **Elektron Node RPC** action to connect the pool to your Elektron Net full
   node (RPC + optional ZMQ).
 
-> Note: There is no StartOS-native Elektron Net node package (yet), so the
-> Elektron Net node is configured manually — it does **not** need to run on the
-> same StartOS server.
-
 ## Getting set up
 
-1. Make sure you have an **Elektron Net** full node running and reachable from
-   the StartOS server. In your `elektron.conf` allow RPC from the StartOS
-   server's network, e.g.:
+The pool needs an Elektron Net full node to subscribe to new-block events and
+submit found blocks. The recommended setup is to install the
+StartOS-native [Elektron Net](https://github.com/kutlusoy/elektron-net-startos)
+package on the **same** StartOS server — then the two services talk to each
+other over the internal Docker network, no router/firewall changes required.
 
-   ```
-   rpcallowip=172.16.0.0/12
-   server=1
-   # optional, for block notifications:
-   zmqpubrawblock=tcp://*:3000
-   ```
+### A) Local Elektron Net on the same StartOS (recommended)
 
-2. Install **Elektron Net Pool** on StartOS.
-3. Open the **Elektron Node RPC** action and fill in:
-   - **Elektron Node RPC URL** (e.g. `http://192.168.1.100`)
-   - **Elektron Node RPC Port** (default `8332`)
-   - either **RPC User / RPC Password** *or* the path to the **Cookie File**
-   - optionally the **ZMQ Host** (e.g. `tcp://192.168.1.100:3000`)
-   - the **Network** (`mainnet` or `regtest`)
-4. Open the **Configure** action and set:
+1. Install the **Elektron Net** package on StartOS and let it sync.
+2. In **Elektron Net → Configure → RPC**, add an `rpcauth` entry (use the
+   [`rpcauth.py`](https://github.com/bitcoin/bitcoin/blob/master/share/rpcauth/rpcauth.py)
+   helper to generate one) so the pool can authenticate with username +
+   password. Restart Elektron Net so the new auth takes effect.
+3. Install **Elektron Net Pool** on the same StartOS.
+4. Open **Elektron Net Pool → Elektron Node RPC** action and fill in:
+   - **Elektron Node RPC URL:** `http://elektrond.startos`
+   - **Elektron Node RPC Port:** `8332`
+   - **Elektron Node RPC User / Password:** the credentials you generated in
+     step 2
+   - **Elektron Node ZMQ Host** *(optional, enables push notifications for new
+     blocks):* `tcp://elektrond.startos:28332`
+   - **Network:** `mainnet` (or `regtest` for testing)
+5. Open the **Configure** action and set:
    - **Pool Identifier** — the string that appears in your coinbase
      transactions.
    - **Server Display URL** — which of the Stratum interface's plain-TCP
@@ -45,7 +45,25 @@ StartOS.
      hostname.
    - **Secure Server Display URL** — which TLS address to display for
      `stratum+tls` connections.
-5. Point your mining hardware at the Stratum server.
+6. Point your mining hardware at the Stratum server.
+
+The ZMQ-Autoconfig task wired in this package will automatically flip
+`zmqEnabled: true` in Elektron Net's `bitcoin.conf` the first time the pool
+starts — you don't need to enable it manually.
+
+> **Note on hostnames:** `elektrond.startos` works on StartOS 0.3.6+. On older
+> versions try `elektrond.embassy` or just `elektrond`. You can confirm the
+> exact address in StartOS UI → *Service “Elektron Net” → Interfaces → RPC
+> Interface*.
+
+### B) Remote Elektron Net node (advanced / not recommended)
+
+If you really must point the pool at a node on a different machine, make sure
+you know what you're doing — exposing the JSON-RPC port to the public internet
+is dangerous. Use a VPN / Tailscale / WireGuard tunnel and address the node
+over the tunnel's private IP, never via a port-forward on your router. In the
+`elektron-rpc` action use that private IP (e.g. `http://10.0.0.5`) instead of
+`elektrond.startos`.
 
 ## Connecting miners
 
