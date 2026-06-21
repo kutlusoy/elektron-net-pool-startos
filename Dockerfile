@@ -1,9 +1,6 @@
 FROM node:24-bookworm-slim AS build
 
-# Default to the address-validator fix branch until merged to main.
-# After kutlusoy/elektron-net-pool#claude/nifty-curie-u1lg4q is merged to main,
-# change this back to `main`.
-ARG ELEKTRON_POOL_REF=claude/nifty-curie-u1lg4q
+ARG ELEKTRON_POOL_REF=main
 ARG ELEKTRON_POOL_UI_REF=main
 
 RUN \
