@@ -21,6 +21,13 @@ make x86_64      # single-arch
 make install     # install to the StartOS host configured in ~/.startos/config.yaml
 ```
 
+The CI workflow (`.github/workflows/sideload.yml`) reads the canonical
+package version from `startos/versions/current.ts` (e.g. `4.0.1:2`) and
+embeds it in the built artifact and `.s9pk` filename, encoded as
+`<base>-4.0.1-r2.s9pk` so the revision (`:N`) survives in a POSIX-safe
+form. Bumping the version in `current.ts` automatically renames the next
+release artifact.
+
 See `instructions.md` for end-user setup.
 
 ## Configuration
@@ -47,3 +54,11 @@ into the pool container) and `/media/startos/volumes/main/store.json`.
 - The Stratum display URL placeholders (`<Stratum URL>` /
   `<Secure Stratum URL>`) are `sed`-replaced into the built UI bundle at
   service start.
+- **No coinbase fee.** Elektron's per-block UTXO attestation pins the
+  coinbase to a single payout output to the miner's address, so the pool
+  cannot insert a dev/pool fee split. 100 % of the block reward goes to
+  the connected miner.
+- **Per-miner template throughput.** Each connected miner triggers its own
+  `getblocktemplate` call on the Elektron node. Practical capacity is
+  bound by your node's RPC throughput; tune
+  `STRATUM_MAX_CONNECTIONS_PER_LISTENER` accordingly.
