@@ -14,39 +14,59 @@ so updates to the StartOS build pipeline are picked up automatically.
 
 | File | Trigger | Purpose |
 | ---- | ------- | ------- |
-| `workflows/sideload.yml`      | manual or push to `main` | **Recommended for personal use.** Builds the `.s9pk` and uploads it as a workflow artifact for sideloading onto your own StartOS server. No S3 / registry needed. |
+| `workflows/sideload.yml`      | manual or push of tag `elektron-net-pool-v*` | **Recommended for personal use.** Builds the `.s9pk` and uploads it as a workflow artifact for sideloading onto your own StartOS server. No secrets, no S3 / registry needed. |
 | `workflows/build.yml`         | `pull_request` against `main` (and manual `workflow_dispatch`) | Validates that every PR still produces a buildable `.s9pk`. Skips draft PRs and markdown-only changes. |
 | `workflows/tagAndRelease.yml` | `push` to `main` (excluding markdown) | **Marketplace pipeline.** Reads the version from `startos/manifest`, creates a matching git tag if one does not exist, and triggers the release pipeline. Kept in place so Start9 can adopt this package upstream without changes. |
 | `workflows/release.yml`       | `push` of a tag matching `v*.*` | **Marketplace pipeline.** Builds the final `.s9pk`, uploads it to the configured S3 bucket and publishes it to the StartOS registry. |
 
 ## Sideloading (personal use)
 
-1. In GitHub, configure the `DEV_KEY` secret (see below).
-2. Go to **Actions → Sideload** and click **Run workflow** (or just push a
-   commit to `main`).
-3. When the run finishes, open it and download the `.s9pk` from the
+No configuration is required — the workflow runs out of the box on a fresh
+clone of the repo. The upstream shared build workflow auto-generates a
+Wegwerf (throwaway) developer signing key when no `DEV_KEY` secret is set,
+which is exactly what you want for personal sideloading: StartOS will warn
+that the package is unsigned-by-a-trusted-party and let you install it
+anyway.
+
+1. Tag the commit you want to ship and push the tag:
+
+   ```sh
+   git tag elektron-net-pool-v0.1.0
+   git push origin elektron-net-pool-v0.1.0
+   ```
+
+   Or trigger it manually under **Actions → Sideload → Run workflow**.
+2. When the run finishes, open it and download the `.s9pk` from the
    **Artifacts** section at the bottom of the page.
-4. In your StartOS UI, go to **System → Sideload Service**, upload the
+3. In your StartOS UI, go to **System → Sideload Service**, upload the
    `.s9pk`, and install.
 
-## Required repository configuration
+### Optional: stable signing key
 
-Configure on the GitHub repository under
-Settings → Secrets and variables → Actions.
+If you want every build to be signed by the *same* key (so StartOS treats
+updates as coming from the same publisher), generate one locally and store
+it as the `DEV_KEY` repository secret:
 
-### For sideloading only
+```sh
+start-cli init-key
+cat ~/.startos/developer.key.pem    # paste full contents (incl. BEGIN/END lines)
+                                    # into Settings → Secrets and variables
+                                    # → Actions → New repository secret: DEV_KEY
+```
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| `DEV_KEY` | Secret | Your StartOS developer signing key. Generate locally with `start-cli init-key`, then paste the **full contents** of `~/.startos/developer.key.pem` (including the `-----BEGIN/END PRIVATE KEY-----` lines). This key only proves *you* built the package; for sideloading no third party needs to trust it. Never commit it. |
+This is purely optional — the workflow doesn't reference `DEV_KEY` directly
+any more, but the underlying shared workflow will pick it up automatically
+if the secret exists.
 
-### Additionally for the marketplace pipeline (`release.yml` / `tagAndRelease.yml`)
+## Marketplace pipeline configuration (only for Start9 upstream)
 
-Only needed if you (or Start9) plan to publish through a StartOS registry
-and a public S3 bucket.
+If you (or Start9) plan to publish through a StartOS registry and a public
+S3 bucket, configure the following under
+Settings → Secrets and variables → Actions:
 
 | Name | Type | Example | Description |
 | ---- | ---- | ------- | ----------- |
+| `DEV_KEY`            | Secret   | — | StartOS developer signing key (PEM contents). |
 | `S3_ACCESS_KEY`      | Secret   | — | Access key for the S3 bucket hosting the published `.s9pk`. |
 | `S3_SECRET_KEY`      | Secret   | — | Matching secret key. |
 | `REFERENCE_REGISTRY` | Variable | `https://registry.start9.com` | Registry consulted to determine the next version. |
