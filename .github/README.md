@@ -3,7 +3,7 @@
 This folder contains the GitHub Actions workflows that build the
 `elektron-net-pool` StartOS package (`.s9pk`). They are mirrored from the
 upstream [`Start9Labs/public-pool-startos`](https://github.com/Start9Labs/public-pool-startos/tree/master/.github/workflows)
-template and adapted to this repository's `main` branch.
+template and adapted to this repository's `main` branch..
 
 All workflows delegate the actual build/release logic to the reusable
 workflows in

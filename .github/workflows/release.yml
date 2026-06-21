@@ -1,4 +1,4 @@
-# Upstream Start9 marketplace release pipeline.
+# Upstream Start9 marketplace release pipeline...
 #
 # Disabled for personal use: only `workflow_dispatch` (manual) trigger is
 # active. To re-enable for an upstream adoption, replace the `on:` block

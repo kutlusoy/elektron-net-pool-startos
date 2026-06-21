@@ -9,7 +9,7 @@
 # Download the .s9pk from the run / release page and sideload it onto
 # your StartOS server via:
 #
-#   StartOS UI -> System -> Sideload Service -> upload the .s9pk
+#   StartOS UI -> System -> Sideload Service -> upload the .s9pk ...
 #
 # Self-contained: does NOT use start9labs/shared-workflows. That reusable
 # workflow only runs `make`, which fails on a clean checkout because the
