@@ -4,7 +4,6 @@ import { elektrondDescription, long, short } from './i18n'
 export const manifest = setupManifest({
   id: 'elektron-net-pool',
   title: 'Elektron Net Pool',
-  license: 'GPL',
   packageRepo: 'https://github.com/kutlusoy/elektron-net-pool-startos',
   upstreamRepo: 'https://github.com/kutlusoy/elektron-net-pool',
   marketingUrl: 'https://elektron-net.org',
