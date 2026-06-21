@@ -11,15 +11,15 @@
 #
 #   StartOS UI -> System -> Sideload Service -> upload the .s9pk
 #
-# This workflow is independent of the Start9 marketplace pipeline
-# (release.yml / tagAndRelease.yml). No secrets and no S3 / registry
-# configuration are required: the upstream shared-workflow generates an
-# ephemeral developer signing key on the fly when DEV_KEY is not set.
+# Self-contained: does NOT use start9labs/shared-workflows. That reusable
+# workflow only runs `make`, which fails on a clean checkout because the
+# Makefile's `INGREDIENTS := $(shell start-cli s9pk list-ingredients ...)`
+# is evaluated at parse time from javascript/index.js, which hasn't been
+# compiled yet. We bootstrap that file ourselves via npm install + npm run
+# build (matching kutlusoy/elektron-net-startos's build.yml) before make.
 #
-# To produce a build, either:
-#   * push a tag matching `elektron-net-pool-v*`
-#       git tag elektron-net-pool-v0.1.0 && git push origin elektron-net-pool-v0.1.0
-#   * or run it manually: Actions -> Sideload -> Run workflow
+# No secrets required: start-cli init-key generates an ephemeral signing
+# key for each build. Set the DEV_KEY secret if you want stable signatures.
 
 name: Sideload
 
@@ -33,32 +33,74 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
-    uses: start9labs/shared-workflows/.github/workflows/build.yml@master
-    # with:
-    #   FREE_DISK_SPACE: true
-
-  release:
-    name: Publish GitHub Release
-    if: startsWith(github.ref, 'refs/tags/elektron-net-pool-v')
-    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download s9pk artifacts from build job
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: '*.s9pk'
-          merge-multiple: true
+      - uses: actions/checkout@v5
 
-      - name: Show downloaded files
-        run: ls -la artifacts
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential python3 \
+            squashfs-tools squashfs-tools-ng
+
+      - name: Install start-cli
+        run: curl -fsSL https://start9.com/start-cli/install.sh | sh
+
+      - name: Install npm dependencies
+        # Use `npm install` (not `npm ci`) so the new git dependency on
+        # elektron-net-startos resolves even before package-lock.json is
+        # regenerated. The lockfile is then written into the build dir
+        # but not committed back — each CI run resolves fresh.
+        run: npm install
+
+      - name: Init developer key
+        run: |
+          if [ -n "${{ secrets.DEV_KEY }}" ]; then
+            mkdir -p ~/.startos
+            printf '%s' "${{ secrets.DEV_KEY }}" > ~/.startos/developer.key.pem
+          else
+            start-cli init-key
+          fi
+
+      - name: Compile TypeScript to javascript/index.js
+        run: npm run build
+
+      - name: Build s9pk
+        run: |
+          RUST_LOG=debug RUST_BACKTRACE=1 make
+          echo
+          echo "SHA256SUMs:"
+          sha256sum *.s9pk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: elektron-net-pool-s9pk
+          path: '*.s9pk'
+          if-no-files-found: error
 
       - name: Derive version from tag
         id: version
+        if: startsWith(github.ref, 'refs/tags/elektron-net-pool-v')
         run: |
           TAG='${{ github.ref_name }}'
           VERSION="${TAG#elektron-net-pool-}"
@@ -66,11 +108,12 @@ jobs:
           echo "Tag '${TAG}' -> version '${VERSION}'"
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/elektron-net-pool-v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "Elektron Net Pool StartOS Release ${{ steps.version.outputs.version }}"
           prerelease: ${{ contains(steps.version.outputs.version, '-rc') }}
-          files: artifacts/*.s9pk
+          files: '*.s9pk'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
