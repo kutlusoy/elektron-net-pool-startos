@@ -1,0 +1,33 @@
+# Sideload build
+#
+# Builds the .s9pk on demand (or on every push to main) and uploads it as a
+# GitHub Actions artifact. Download the artifact from the run page and
+# sideload it onto your StartOS server via:
+#
+#   StartOS UI -> System -> Sideload Service -> upload the .s9pk
+#
+# This workflow is independent of the Start9 marketplace pipeline
+# (release.yml / tagAndRelease.yml). It does not require any S3 or registry
+# configuration; only the DEV_KEY secret is needed so the .s9pk can be
+# signed. Generate one locally with `start-cli init-key` and paste the
+# contents of ~/.startos/developer.key.pem as the DEV_KEY repo secret.
+
+name: Sideload
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['main']
+    paths-ignore: ['*.md', '.github/README.md']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: start9labs/shared-workflows/.github/workflows/build.yml@master
+    # with:
+    #   FREE_DISK_SPACE: true
+    secrets:
+      DEV_KEY: ${{ secrets.DEV_KEY }}
