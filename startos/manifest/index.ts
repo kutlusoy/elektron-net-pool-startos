@@ -1,5 +1,5 @@
 import { setupManifest } from '@start9labs/start-sdk'
-import { long, short } from './i18n'
+import { elektrondDescription, long, short } from './i18n'
 
 export const manifest = setupManifest({
   id: 'elektron-net-pool',
@@ -19,5 +19,14 @@ export const manifest = setupManifest({
       arch: ['x86_64', 'aarch64'],
     },
   },
-  dependencies: {},
+  dependencies: {
+    elektrond: {
+      description: elektrondDescription,
+      optional: false,
+      metadata: {
+        title: 'Elektron Net',
+        icon: 'https://raw.githubusercontent.com/kutlusoy/elektron-net-startos/main/icon.svg',
+      },
+    },
+  },
 })
