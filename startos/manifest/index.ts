@@ -22,7 +22,10 @@ export const manifest = setupManifest({
   dependencies: {
     elektrond: {
       description: elektrondDescription,
-      optional: false,
+      // Optional: the pool can also connect to a remote Elektron Net node
+      // via the `elektron-rpc` action. When elektrond is installed on the
+      // same StartOS host the dependency relationship is shown in the UI.
+      optional: true,
       metadata: {
         title: 'Elektron Net',
         icon: 'https://raw.githubusercontent.com/kutlusoy/elektron-net-startos/main/icon.svg',
