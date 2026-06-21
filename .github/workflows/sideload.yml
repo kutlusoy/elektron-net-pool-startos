@@ -3,8 +3,13 @@
 # Builds the .s9pk on demand or when a release tag is pushed and:
 #   * uploads it as a GitHub Actions artifact (always)
 #   * attaches it to a GitHub Release named
-#       "Elektron Net Pool StartOS Release v<X.Y.Z>"
+#       "Elektron Net Pool StartOS Release v<X.Y.Z>:<R>"
 #     (only when triggered by a tag matching `elektron-net-pool-v*`)
+#
+# Artifact and built s9pk filenames embed the full version from
+# `startos/versions/current.ts`, including the StartOS revision suffix
+# (e.g. version '4.0.1:2' -> `elektron-net-pool-4.0.1-r2.s9pk`). The
+# revision is encoded as `-r<N>` so the filename stays POSIX-safe.
 #
 # Download the .s9pk from the run / release page and sideload it onto
 # your StartOS server via:
@@ -84,6 +89,23 @@ jobs:
       - name: Compile TypeScript to javascript/index.js
         run: npm run build
 
+      - name: Read package version from startos/versions/current.ts
+        id: pkgver
+        run: |
+          # current.ts pins the canonical StartOS package version, e.g.
+          #   version: '4.0.1:2'
+          # We extract the literal verbatim, then derive a filename-safe
+          # variant (`:` -> `-r`) for the artifact name.
+          RAW=$(grep -oE "version: *'[^']+'" startos/versions/current.ts | head -1 | sed -E "s/version: *'(.*)'/\\1/")
+          if [ -z "$RAW" ]; then
+            echo "Failed to parse version from startos/versions/current.ts" >&2
+            exit 1
+          fi
+          SAFE=$(echo "$RAW" | sed 's/:/-r/')
+          echo "raw=${RAW}"   >> "$GITHUB_OUTPUT"
+          echo "safe=${SAFE}" >> "$GITHUB_OUTPUT"
+          echo "Package version: '${RAW}' (filename-safe: '${SAFE}')"
+
       - name: Build s9pk
         run: |
           RUST_LOG=debug RUST_BACKTRACE=1 make
@@ -91,10 +113,35 @@ jobs:
           echo "SHA256SUMs:"
           sha256sum *.s9pk
 
+      - name: Rename s9pk to include version+revision
+        id: rename
+        run: |
+          SAFE='${{ steps.pkgver.outputs.safe }}'
+          shopt -s nullglob
+          renamed=()
+          for f in *.s9pk; do
+            base="${f%.s9pk}"
+            # Avoid double-tagging if `make` already produced a versioned name.
+            case "$base" in
+              *"$SAFE") new="$f" ;;
+              *)        new="${base}-${SAFE}.s9pk" ;;
+            esac
+            if [ "$new" != "$f" ]; then
+              mv -- "$f" "$new"
+            fi
+            renamed+=("$new")
+          done
+          if [ ${#renamed[@]} -eq 0 ]; then
+            echo "No .s9pk produced by make" >&2
+            exit 1
+          fi
+          printf 'Renamed artifacts:\n'
+          printf '  %s\n' "${renamed[@]}"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: elektron-net-pool-s9pk
+          name: elektron-net-pool-s9pk-${{ steps.pkgver.outputs.safe }}
           path: '*.s9pk'
           if-no-files-found: error
 
@@ -112,7 +159,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: "Elektron Net Pool StartOS Release ${{ steps.version.outputs.version }}"
+          name: "Elektron Net Pool StartOS Release ${{ steps.version.outputs.version }} (pkg ${{ steps.pkgver.outputs.raw }})"
           prerelease: ${{ contains(steps.version.outputs.version, '-rc') }}
           files: '*.s9pk'
         env:
