@@ -6,10 +6,14 @@
 #       "Elektron Net Pool StartOS Release v<X.Y.Z>:<R>"
 #     (only when triggered by a tag matching `elektron-net-pool-v*`)
 #
-# Artifact and built s9pk filenames embed the full version from
-# `startos/versions/current.ts`, including the StartOS revision suffix
-# (e.g. version '4.0.1:2' -> `elektron-net-pool-4.0.1-r2.s9pk`). The
-# revision is encoded as `-r<N>` so the filename stays POSIX-safe.
+# `startos/versions/current.ts` holds only the base version, e.g.
+#   version: '4.0.1'
+# The StartOS revision suffix `:N` is managed by this workflow: it queries
+# existing GitHub Releases for the same base version, takes the highest
+# `:N` already in use and bumps it by one (defaults to `:1`). Bumping the
+# base version (e.g. to '4.0.2') automatically resets the revision to 1.
+# Artifact and built s9pk filenames embed the full version, with `:` -> `-r`
+# so the filename stays POSIX-safe (e.g. '4.0.1:2' -> '...-4.0.1-r2.s9pk').
 #
 # Download the .s9pk from the run / release page and sideload it onto
 # your StartOS server via:
@@ -89,22 +93,60 @@ jobs:
       - name: Compile TypeScript to javascript/index.js
         run: npm run build
 
-      - name: Read package version from startos/versions/current.ts
+      - name: Determine package version and auto-bump revision
         id: pkgver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # current.ts pins the canonical StartOS package version, e.g.
-          #   version: '4.0.1:2'
-          # We extract the literal verbatim, then derive a filename-safe
-          # variant (`:` -> `-r`) for the artifact name.
+          # Parse the base version (everything before an optional ':N') from
+          # current.ts. The :N is appended by this workflow, not stored in
+          # the file.
           RAW=$(grep -oE "version: *'[^']+'" startos/versions/current.ts | head -1 | sed -E "s/version: *'(.*)'/\\1/")
           if [ -z "$RAW" ]; then
             echo "Failed to parse version from startos/versions/current.ts" >&2
             exit 1
           fi
-          SAFE=$(echo "$RAW" | sed 's/:/-r/')
-          echo "raw=${RAW}"   >> "$GITHUB_OUTPUT"
+          BASE="${RAW%%:*}"
+          echo "Base version: '${BASE}'"
+
+          # Find the highest existing :N for this base across all releases
+          # (paginated). Match the release name we generate below:
+          #   "... (pkg <BASE>:<N>)"
+          MAX=0
+          PAGE=1
+          while :; do
+            BODY=$(curl -fsSL \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100&page=${PAGE}")
+            COUNT=$(printf '%s' "$BODY" | grep -oE "\"name\": *\"[^\"]+\"" | wc -l)
+            if [ "$COUNT" -eq 0 ]; then break; fi
+            HIT=$(printf '%s' "$BODY" \
+              | grep -oE "pkg ${BASE//./\\.}:[0-9]+" \
+              | grep -oE "[0-9]+$" \
+              | sort -n | tail -1)
+            if [ -n "$HIT" ] && [ "$HIT" -gt "$MAX" ]; then MAX="$HIT"; fi
+            if [ "$COUNT" -lt 100 ]; then break; fi
+            PAGE=$((PAGE + 1))
+          done
+          NEXT=$((MAX + 1))
+          FULL="${BASE}:${NEXT}"
+          SAFE="${BASE}-r${NEXT}"
+          echo "raw=${FULL}"  >> "$GITHUB_OUTPUT"
           echo "safe=${SAFE}" >> "$GITHUB_OUTPUT"
-          echo "Package version: '${RAW}' (filename-safe: '${SAFE}')"
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "Highest existing revision for '${BASE}': ${MAX} -> next: ${NEXT}"
+          echo "Package version: '${FULL}' (filename-safe: '${SAFE}')"
+
+      - name: Patch current.ts with full version
+        run: |
+          FULL='${{ steps.pkgver.outputs.raw }}'
+          sed -i -E "s/version: *'[^']+'/version: '${FULL}'/" startos/versions/current.ts
+          echo "Patched current.ts:"
+          grep "version:" startos/versions/current.ts
+
+      - name: Recompile TypeScript after patch
+        run: npm run build
 
       - name: Build s9pk
         run: |
