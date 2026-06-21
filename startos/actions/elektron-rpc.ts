@@ -4,20 +4,27 @@ import { envFile } from '../file-models/env'
 const { InputSpec, Value } = sdk
 
 // Where the user enters the connection details for the Elektron Net full node.
-// Since there is no StartOS-native package for Elektron Net yet, this cannot be
-// wired automatically the way Public Pool wires Bitcoin Core.
+//
+// Recommended setup: install the StartOS-native `elektrond` package
+// (https://github.com/kutlusoy/elektron-net-startos) on the same StartOS host.
+// The pool then reaches it over the internal Docker network at
+//   http://elektrond.startos:8332    (RPC)
+//   tcp://elektrond.startos:28332    (ZMQ, optional)
+// Hostname format depends on StartOS version: `elektrond.startos` on 0.3.6+,
+// `elektrond.embassy` on 0.3.5. See the package's RPC Interface page in the
+// StartOS UI for the exact address.
 export const inputSpec = InputSpec.of({
   ELEKTRON_RPC_URL: Value.text({
     name: 'Elektron Node RPC URL',
     description:
-      'Base URL of the Elektron Net node, e.g. http://192.168.1.100 or http://host.docker.internal',
+      'Base URL of the Elektron Net node. For a local elektrond on the same StartOS, use http://elektrond.startos (StartOS 0.3.6+) or http://elektrond.embassy (0.3.5). For a remote node behind a VPN, use the tunnel IP, e.g. http://10.0.0.5.',
     required: true,
-    default: 'http://192.168.1.100',
-    placeholder: 'http://192.168.1.100',
+    default: 'http://elektrond.startos',
+    placeholder: 'http://elektrond.startos',
   }),
   ELEKTRON_RPC_PORT: Value.text({
     name: 'Elektron Node RPC Port',
-    description: 'RPC port of the Elektron Net node',
+    description: 'RPC port of the Elektron Net node (8332 by default)',
     required: true,
     default: '8332',
     placeholder: '8332',
@@ -26,7 +33,7 @@ export const inputSpec = InputSpec.of({
   ELEKTRON_RPC_USER: Value.text({
     name: 'Elektron Node RPC User',
     description:
-      'RPC username. Leave empty if you use a cookie file instead.',
+      'RPC username. Generate an rpcauth entry in Elektron Net (Configure -> RPC) and use the chosen username here.',
     required: false,
     default: null,
     placeholder: '',
@@ -34,7 +41,7 @@ export const inputSpec = InputSpec.of({
   ELEKTRON_RPC_PASSWORD: Value.text({
     name: 'Elektron Node RPC Password',
     description:
-      'RPC password. Leave empty if you use a cookie file instead.',
+      'RPC password matching the rpcauth entry in Elektron Net.',
     required: false,
     default: null,
     placeholder: '',
@@ -43,7 +50,7 @@ export const inputSpec = InputSpec.of({
   ELEKTRON_RPC_COOKIEFILE: Value.text({
     name: 'Elektron Node RPC Cookie File',
     description:
-      'Path to the Elektron Net node .cookie file (alternative to user/password)',
+      'Optional path to the Elektron Net node .cookie file (alternative to user/password). Only usable when the pool can mount the elektrond volume — normally leave empty and use user/password instead.',
     required: false,
     default: null,
     placeholder: '',
@@ -59,10 +66,10 @@ export const inputSpec = InputSpec.of({
   ELEKTRON_ZMQ_HOST: Value.text({
     name: 'Elektron Node ZMQ Host',
     description:
-      'Optional ZMQ endpoint, e.g. tcp://192.168.1.100:3000. Enables push notifications for new blocks.',
+      'Optional ZMQ endpoint, enables push notifications for new blocks. For a local elektrond, use tcp://elektrond.startos:28332.',
     required: false,
     default: null,
-    placeholder: 'tcp://192.168.1.100:3000',
+    placeholder: 'tcp://elektrond.startos:28332',
   }),
   NETWORK: Value.select({
     name: 'Network',
