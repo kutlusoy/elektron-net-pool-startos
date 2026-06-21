@@ -40,8 +40,22 @@ anyway.
 
    ```
 
-   
+   ```sh
+   # remote löschen
+   git push origin :refs/tags/elektron-net-pool-v4.0.2
 
+   # lokal löschen
+   git tag -d elektron-net-pool-v4.0.2
+
+   # neu setzen auf aktuellen HEAD (oder gewünschten Commit)
+   git tag elektron-net-pool-v4.0.2
+
+   # pushen
+   git push origin elektron-net-pool-v4.0.2
+
+   ```
+
+   
    Or trigger it manually under **Actions → Sideload → Run workflow**.
 2. When the run finishes, open it and download the `.s9pk` from the
    **Artifacts** section at the bottom of the page.
