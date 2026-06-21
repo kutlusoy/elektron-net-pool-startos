@@ -90,9 +90,6 @@ jobs:
             start-cli init-key
           fi
 
-      - name: Compile TypeScript to javascript/index.js
-        run: npm run build
-
       - name: Determine package version and auto-bump revision
         id: pkgver
         env:
@@ -139,13 +136,17 @@ jobs:
           echo "Package version: '${FULL}' (filename-safe: '${SAFE}')"
 
       - name: Patch current.ts with full version
+        # current.ts stores only the base version (e.g. '4.0.1'); the start-sdk
+        # version type requires the full 'X.Y.Z:N' form, so we MUST patch
+        # before the TypeScript compile or `npm run build` will fail with
+        # "Type 'string' is not assignable to type 'never'".
         run: |
           FULL='${{ steps.pkgver.outputs.raw }}'
           sed -i -E "s/version: *'[^']+'/version: '${FULL}'/" startos/versions/current.ts
           echo "Patched current.ts:"
           grep "version:" startos/versions/current.ts
 
-      - name: Recompile TypeScript after patch
+      - name: Compile TypeScript to javascript/index.js
         run: npm run build
 
       - name: Build s9pk
