@@ -1,9 +1,19 @@
+# Upstream Start9 marketplace tag + release pipeline.
+#
+# Disabled for personal use: only `workflow_dispatch` (manual) trigger is
+# active. Without this guard the workflow would fire on every push to
+# `main`. To re-enable for an upstream adoption, replace the `on:` block
+# below with the original:
+#
+#   on:
+#     push:
+#       branches: ['main']
+#       paths-ignore: ['*.md']
+
 name: Tag and Release
 
 on:
-  push:
-    branches: ['main']
-    paths-ignore: ['*.md']
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
