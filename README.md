@@ -21,12 +21,13 @@ make x86_64      # single-arch
 make install     # install to the StartOS host configured in ~/.startos/config.yaml
 ```
 
-The CI workflow (`.github/workflows/sideload.yml`) reads the canonical
-package version from `startos/versions/current.ts` (e.g. `4.0.1:2`) and
-embeds it in the built artifact and `.s9pk` filename, encoded as
-`<base>-4.0.1-r2.s9pk` so the revision (`:N`) survives in a POSIX-safe
-form. Bumping the version in `current.ts` automatically renames the next
-release artifact.
+The CI workflow (`.github/workflows/sideload.yml`) is triggered by a
+git tag of the form `v<X.Y.Z>` and creates a GitHub Release named
+`Elektron Net Pool StartOS Release v<X.Y.Z>` with the built `.s9pk`
+attached. The full StartOS package version (with the `:N` revision
+suffix required by `@start9labs/start-sdk`) is read directly from
+`startos/versions/current.ts` and managed manually — bump it there
+before tagging.
 
 See `instructions.md` for end-user setup.
 
