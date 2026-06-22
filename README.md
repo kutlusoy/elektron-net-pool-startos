@@ -21,14 +21,82 @@ make x86_64      # single-arch
 make install     # install to the StartOS host configured in ~/.startos/config.yaml
 ```
 
-The CI workflow (`.github/workflows/sideload.yml`) reads the canonical
-package version from `startos/versions/current.ts` (e.g. `4.0.1:2`) and
-embeds it in the built artifact and `.s9pk` filename, encoded as
-`<base>-4.0.1-r2.s9pk` so the revision (`:N`) survives in a POSIX-safe
-form. Bumping the version in `current.ts` automatically renames the next
-release artifact.
-
 See `instructions.md` for end-user setup.
+
+## Releasing
+
+The CI workflow (`.github/workflows/sideload.yml`) is triggered by a git
+tag of the form `v<X.Y.Z>` and creates a GitHub Release named
+`Elektron Net Pool StartOS Release v<X.Y.Z>` with the built `.s9pk`
+attached.
+
+### Version format and the `:N` revision suffix
+
+`@start9labs/start-sdk` requires the package version literal in
+`startos/versions/current.ts` to follow the **exver** format
+`<X.Y.Z>:<N>`, where:
+
+- `X.Y.Z` is the upstream Elektron Net Pool version this build targets
+- `:N` is the **StartOS package revision** — a counter that increments
+  every time you re-release the *same* upstream version (e.g. for a
+  packaging fix that does not change the upstream code)
+
+Without the `:N` suffix the TypeScript build fails with
+`TS2322: Type 'string' is not assignable to type 'never'`. The suffix is
+a hard SDK constraint — there is no way to omit it.
+
+### Manual workflow
+
+1. Decide what kind of release you are cutting:
+
+   | Scenario | Version bump |
+   |----------|--------------|
+   | New upstream Pool version (`X.Y.Z` changed) | Set `version: 'X.Y.Z:1'` |
+   | Packaging-only fix on the same upstream version | Increment `:N` (e.g. `'4.0.3:1'` → `'4.0.3:2'`) |
+
+2. Edit `startos/versions/current.ts` accordingly. Update the
+   `releaseNotes` strings (`en_US`, `de_DE`) while you are there.
+
+3. Commit on `main`:
+
+   ```sh
+   git add startos/versions/current.ts
+   git commit -m "release: 4.0.3:2"
+   git push origin main
+   ```
+
+4. Tag (the tag uses only `v<X.Y.Z>`, **without** `:N`):
+
+   ```sh
+   git tag v4.0.3
+   git push origin v4.0.3
+   ```
+
+   If a tag with that name already exists (e.g. you re-released as
+   `:2`), delete the old tag first:
+
+   ```sh
+   git push --delete origin v4.0.3
+   git tag -d v4.0.3
+   git tag v4.0.3
+   git push origin v4.0.3
+   ```
+
+   The previous GitHub Release will be updated in-place by the
+   workflow — old assets get replaced with the new `:N` build.
+
+5. CI builds the `.s9pk` and attaches it to the release
+   `Elektron Net Pool StartOS Release v<X.Y.Z>`.
+
+### Where `:N` shows up (and where it doesn't)
+
+| Surface | Format | Contains `:N`? |
+|---------|--------|----------------|
+| `startos/versions/current.ts` | `'4.0.3:2'` | **yes** (SDK requirement) |
+| Git tag | `v4.0.3` | no |
+| GitHub Release title | `Elektron Net Pool StartOS Release v4.0.3` | no |
+| `.s9pk` filename | `elektron-net-pool.s9pk` (and per-arch variants) | no |
+| StartOS UI / package metadata | `4.0.3:2` | yes (read from `current.ts`) |
 
 ## Configuration
 
