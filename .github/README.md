@@ -31,8 +31,8 @@ anyway.
 1. Tag the commit you want to ship and push the tag:
 
    ```sh
-   git tag elektron-net-pool-v0.1.0
-   git push origin elektron-net-pool-v0.1.0
+   git tag v4.0.1
+   git push origin v4.0.1
 
    if to delete and tag new
 
