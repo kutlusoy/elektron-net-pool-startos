@@ -1,31 +1,16 @@
-# Sideload build
+# Sideload build for Elektron Net Pool StartOS
 #
-# Builds the .s9pk on demand or when a release tag is pushed and:
-#   * uploads it as a GitHub Actions artifact (always)
-#   * attaches it to a GitHub Release named
-#       "Elektron Net Pool StartOS Release v<X.Y.Z>:<R>"
-#     (only when triggered by a tag matching `elektron-net-pool-v*`)
+# Mirrors kutlusoy/elektron-net-startos build.yml: pushing a tag `v<X.Y.Z>`
+# builds the .s9pk and creates a GitHub Release named
+# "Elektron Net Pool StartOS Release v<X.Y.Z>".
 #
-# `startos/versions/current.ts` holds only the base version, e.g.
-#   version: '4.0.1'
-# The StartOS revision suffix `:N` is managed by this workflow: it queries
-# existing GitHub Releases for the same base version, takes the highest
-# `:N` already in use and bumps it by one (defaults to `:1`). Bumping the
-# base version (e.g. to '4.0.2') automatically resets the revision to 1.
-# Artifact and built s9pk filenames embed the full version, with `:` -> `-r`
-# so the filename stays POSIX-safe (e.g. '4.0.1:2' -> '...-4.0.1-r2.s9pk').
+# The full StartOS package version (including the `:N` revision suffix) is
+# read directly from `startos/versions/current.ts` and managed manually —
+# bump it there before tagging.
 #
-# Download the .s9pk from the run / release page and sideload it onto
-# your StartOS server via:
-#
-#   StartOS UI -> System -> Sideload Service -> upload the .s9pk ...
-#
-# Self-contained: does NOT use start9labs/shared-workflows. That reusable
-# workflow only runs `make`, which fails on a clean checkout because the
-# Makefile's `INGREDIENTS := $(shell start-cli s9pk list-ingredients ...)`
-# is evaluated at parse time from javascript/index.js, which hasn't been
-# compiled yet. We bootstrap that file ourselves via npm install + npm run
-# build (matching kutlusoy/elektron-net-startos's build.yml) before make.
+# Self-contained: the Makefile's `INGREDIENTS := $(shell start-cli s9pk
+# list-ingredients ...)` is evaluated at parse time from javascript/index.js,
+# so we compile TypeScript before invoking make.
 #
 # No secrets required: start-cli init-key generates an ephemeral signing
 # key for each build. Set the DEV_KEY secret if you want stable signatures.
@@ -36,7 +21,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'elektron-net-pool-v*'
+      - 'v*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -75,10 +60,7 @@ jobs:
         run: curl -fsSL https://start9.com/start-cli/install.sh | sh
 
       - name: Install npm dependencies
-        # Use `npm install` (not `npm ci`) so the new git dependency on
-        # elektron-net-startos resolves even before package-lock.json is
-        # regenerated. The lockfile is then written into the build dir
-        # but not committed back — each CI run resolves fresh.
+        # `npm install` (not `npm ci`) so git dependencies resolve cleanly.
         run: npm install
 
       - name: Init developer key
@@ -90,120 +72,25 @@ jobs:
             start-cli init-key
           fi
 
-      - name: Determine package version and auto-bump revision
-        id: pkgver
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Parse the base version (everything before an optional ':N') from
-          # current.ts. The :N is appended by this workflow, not stored in
-          # the file.
-          RAW=$(grep -oE "version: *'[^']+'" startos/versions/current.ts | head -1 | sed -E "s/version: *'(.*)'/\\1/")
-          if [ -z "$RAW" ]; then
-            echo "Failed to parse version from startos/versions/current.ts" >&2
-            exit 1
-          fi
-          BASE="${RAW%%:*}"
-          echo "Base version: '${BASE}'"
-
-          # Find the highest existing :N for this base across all releases
-          # (paginated). Match the release name we generate below:
-          #   "... (pkg <BASE>:<N>)"
-          MAX=0
-          PAGE=1
-          while :; do
-            BODY=$(curl -fsSL \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100&page=${PAGE}")
-            COUNT=$(printf '%s' "$BODY" | grep -oE "\"name\": *\"[^\"]+\"" | wc -l)
-            if [ "$COUNT" -eq 0 ]; then break; fi
-            HIT=$(printf '%s' "$BODY" \
-              | grep -oE "pkg ${BASE//./\\.}:[0-9]+" \
-              | grep -oE "[0-9]+$" \
-              | sort -n | tail -1)
-            if [ -n "$HIT" ] && [ "$HIT" -gt "$MAX" ]; then MAX="$HIT"; fi
-            if [ "$COUNT" -lt 100 ]; then break; fi
-            PAGE=$((PAGE + 1))
-          done
-          NEXT=$((MAX + 1))
-          FULL="${BASE}:${NEXT}"
-          SAFE="${BASE}-r${NEXT}"
-          echo "raw=${FULL}"  >> "$GITHUB_OUTPUT"
-          echo "safe=${SAFE}" >> "$GITHUB_OUTPUT"
-          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
-          echo "Highest existing revision for '${BASE}': ${MAX} -> next: ${NEXT}"
-          echo "Package version: '${FULL}' (filename-safe: '${SAFE}')"
-
-      - name: Patch current.ts with full version
-        # current.ts stores only the base version (e.g. '4.0.1'); the start-sdk
-        # version type requires the full 'X.Y.Z:N' form, so we MUST patch
-        # before the TypeScript compile or `npm run build` will fail with
-        # "Type 'string' is not assignable to type 'never'".
-        run: |
-          FULL='${{ steps.pkgver.outputs.raw }}'
-          sed -i -E "s/version: *'[^']+'/version: '${FULL}'/" startos/versions/current.ts
-          echo "Patched current.ts:"
-          grep "version:" startos/versions/current.ts
-
       - name: Compile TypeScript to javascript/index.js
         run: npm run build
 
       - name: Build s9pk
-        run: |
-          RUST_LOG=debug RUST_BACKTRACE=1 make
-          echo
-          echo "SHA256SUMs:"
-          sha256sum *.s9pk
-
-      - name: Rename s9pk to include version+revision
-        id: rename
-        run: |
-          SAFE='${{ steps.pkgver.outputs.safe }}'
-          shopt -s nullglob
-          renamed=()
-          for f in *.s9pk; do
-            base="${f%.s9pk}"
-            # Avoid double-tagging if `make` already produced a versioned name.
-            case "$base" in
-              *"$SAFE") new="$f" ;;
-              *)        new="${base}-${SAFE}.s9pk" ;;
-            esac
-            if [ "$new" != "$f" ]; then
-              mv -- "$f" "$new"
-            fi
-            renamed+=("$new")
-          done
-          if [ ${#renamed[@]} -eq 0 ]; then
-            echo "No .s9pk produced by make" >&2
-            exit 1
-          fi
-          printf 'Renamed artifacts:\n'
-          printf '  %s\n' "${renamed[@]}"
+        run: make
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: elektron-net-pool-s9pk-${{ steps.pkgver.outputs.safe }}
+          name: elektron-net-pool-s9pk
           path: '*.s9pk'
           if-no-files-found: error
 
-      - name: Derive version from tag
-        id: version
-        if: startsWith(github.ref, 'refs/tags/elektron-net-pool-v')
-        run: |
-          TAG='${{ github.ref_name }}'
-          VERSION="${TAG#elektron-net-pool-}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Tag '${TAG}' -> version '${VERSION}'"
-
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/elektron-net-pool-v')
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: "Elektron Net Pool StartOS Release ${{ steps.version.outputs.version }} (pkg ${{ steps.pkgver.outputs.raw }})"
-          prerelease: ${{ contains(steps.version.outputs.version, '-rc') }}
+          name: "Elektron Net Pool StartOS Release ${{ github.ref_name }}"
           files: '*.s9pk'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
