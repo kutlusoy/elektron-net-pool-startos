@@ -1,7 +1,7 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '4.0.3:1',
+  version: '4.0.1:1',
   releaseNotes: {
     en_US: 'Elektron Net Pool on StartOS.',
     de_DE: 'Elektron Net Pool auf StartOS.',
