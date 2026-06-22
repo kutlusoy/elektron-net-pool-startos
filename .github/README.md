@@ -36,7 +36,7 @@ anyway.
 
    if to delete and tag new
 
-   git tag -d elektron-net-pool-v0.1.0 && git push origin :elektron-net-pool-v0.1.0 && git tag elektron-net-pool-v0.1.0 && git push origin elektron-net-pool-v0.1.0
+   git tag -d v4.0.1 && git push origin :v4.0.1 && git tag v4.0.1 && git push origin v4.0.1
 
    ```
 
@@ -45,13 +45,13 @@ anyway.
    git push origin :refs/tags/elektron-net-pool-v4.0.2
 
    # lokal löschen
-   git tag -d elektron-net-pool-v4.0.2
+   git tag -d v4.0.1
 
    # neu setzen auf aktuellen HEAD (oder gewünschten Commit)
-   git tag elektron-net-pool-v4.0.2
+   git tag v4.0.1
 
    # pushen
-   git push origin elektron-net-pool-v4.0.2
+   git push origin v4.0.1
 
    ```
 
