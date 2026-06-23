@@ -20,12 +20,16 @@ const shape = z.object({
   NETWORK: z.enum(['mainnet', 'regtest']).catch('mainnet'),
   DEV_FEE_ADDRESS: z.string().catch(''),
   // Hobby-miner allow-list. Comma-separated userAgent substrings
-  // (case-insensitive). Matching sessions get HOBBY_MINER_DIFFICULTY as
-  // their starting difficulty and `mode=HOBBY` in the log line. Defaults
-  // mirror the pool's .env.example so detection works out of the box.
+  // (case-insensitive). Matching sessions are treated as needing the
+  // NerdMiner-style compatibility mode: non-empty extranonce1 in the
+  // subscribe response so the firmware does not abort, plus a low starting
+  // difficulty. Compliant firmwares (Bitaxe ESP-Miner, Antminer,
+  // Whatsminer) must NOT be on this list — they need empty extranonce1 to
+  // produce valid shares against the canonical coinbase. Mirrors the
+  // pool's .env.example.
   HOBBY_MINER_USER_AGENTS: z
     .string()
-    .catch('NerdMiner,NerdminerV2,nerdminer,Bitaxe,NerdAxe,NerdQAxe,ESP-Miner'),
+    .catch('NerdMiner,NerdminerV2,nerdminer,NerdAxe,NerdQAxe'),
   HOBBY_MINER_DIFFICULTY: z.string().catch('0.001'),
   // Per-share diagnostic logging. Comma-separated list of header-
   // reconstruction hypotheses; empty disables all diagnostic output.
