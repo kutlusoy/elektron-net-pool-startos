@@ -19,10 +19,10 @@ const shape = z.object({
   POOL_IDENTIFIER: z.string().catch('Elektron-Pool on StartOS'),
   NETWORK: z.enum(['mainnet', 'regtest']).catch('mainnet'),
   DEV_FEE_ADDRESS: z.string().catch(''),
-  // Per-share diagnostic log line. Off by default (very chatty); can be
-  // toggled on from the Diagnostic Logging action when investigating
-  // hobby-miner share-validation issues.
-  DIAGNOSTIC_SHARE_LOGGING: z.enum(['true', 'false']).catch('false'),
+  // Per-share diagnostic logging. Comma-separated list of header-
+  // reconstruction hypotheses; empty disables all diagnostic output.
+  // Operator-facing Diagnostic Logging action edits this string.
+  DIAGNOSTIC_SHARE_LOGGING_MODES: z.string().catch(''),
 })
 
 export type EnvType = z.infer<typeof shape>
