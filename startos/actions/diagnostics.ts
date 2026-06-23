@@ -48,6 +48,12 @@ export const inputSpec = InputSpec.of({
       'Append extranonce1 || extranonce2. The full classical Stratum coinbase reconstruction.',
     default: false,
   }),
+  'suffix-en1-default-en2': Value.toggle({
+    name: 'suffix-en1-default-en2',
+    description:
+      'Append extranonce1 || "00000001". Tests the NerdMiner v1.8.3 firmware behaviour where, when the pool advertises extranonce2_size=0, the firmware falls through to its else-branch and hardcodes extranonce2 = "00000001" (4 bytes) into the coinbase regardless of what the pool said. Source: NerdMiner_v2 src/utils.cpp:216-226 in calculateMiningData.',
+    default: false,
+  }),
   'suffix-zero4': Value.toggle({
     name: 'suffix-zero4',
     description:
@@ -83,6 +89,7 @@ const MODES = [
   'canonical',
   'suffix-en1',
   'suffix-en1-en2',
+  'suffix-en1-default-en2',
   'suffix-zero4',
   'suffix-zero8',
   'prefix-en1',
