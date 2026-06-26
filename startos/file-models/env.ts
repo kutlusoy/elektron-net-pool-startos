@@ -35,6 +35,11 @@ const shape = z.object({
   // reconstruction hypotheses; empty disables all diagnostic output.
   // Operator-facing Diagnostic Logging action edits this string.
   DIAGNOSTIC_SHARE_LOGGING_MODES: z.string().catch(''),
+  // Daily-rotating file logger inside the DB volume. Files are named
+  // pool-YYYY-MM-DD.log and pruned automatically when they exceed the
+  // retention window so stdout-captured pool logs don't grow unbounded.
+  LOG_DIR: z.string().catch('./DB/logs'),
+  LOG_RETENTION_DAYS: z.string().catch('7'),
 })
 
 export type EnvType = z.infer<typeof shape>
