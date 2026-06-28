@@ -15,6 +15,12 @@ const shape = z.object({
   API_PORT: z.literal('3334').catch('3334'),
   STRATUM_PORT: z.literal('3333').catch('3333'),
   STRATUM_MAX_CONNECTIONS_PER_LISTENER: z.string().catch('10000'),
+  // Per-miner template push cadence (ms). High-end ASICs benefit from a
+  // shorter tick to keep ntime advancing; raise it to relieve a strained
+  // upstream Elektron Net node. Hard floor 1000 ms in the pool.
+  JOB_REFRESH_INTERVAL_MS: z.string().catch('30000'),
+  // Vardiff re-evaluation cadence (ms). Hard floor 5000 ms in the pool.
+  DIFFICULTY_CHECK_INTERVAL_MS: z.string().catch('60000'),
   API_SECURE: z.literal('false').catch('false'),
   POOL_IDENTIFIER: z.string().catch('Elektron-Pool on StartOS'),
   NETWORK: z.enum(['mainnet', 'regtest']).catch('mainnet'),
