@@ -57,14 +57,33 @@ jobs:
             squashfs-tools squashfs-tools-ng
 
       - name: Install start-cli
-        run: curl -fsSL https://start9.com/start-cli/install.sh | sh
-
-      - name: Init packaging workspace
-        # start-cli requires a "packaging workspace" in the directory that
-        # *contains* the package repo (not the repo itself). actions/checkout
-        # puts us at .../work/<repo>/<repo>, so init one level up.
-        working-directory: ${{ github.workspace }}/..
-        run: start-cli s9pk init-workspace
+        # Pin to the last pre-1.0 start-cli, same as start9labs/shared-workflows'
+        # setup-build-env action. 1.0+ introduced a "packaging workspace"
+        # concept this repo's legacy Makefile/s9pk.mk plumbing isn't set up
+        # for ("Uninitialized: No packaging workspace found" during `make`);
+        # the curl install.sh script always fetches latest, so fetch the
+        # pinned release asset directly instead.
+        run: |
+          START_CLI_TAG="v0.4.0-beta.9"
+          ARCH=$(uname -m)
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ASSET_NAME="start-cli_${ARCH}-${OS}"
+          DOWNLOAD_URL=$(curl -fsS \
+            -H "Authorization: token ${{ github.token }}" \
+            "https://api.github.com/repos/Start9Labs/start-technologies/releases/tags/${START_CLI_TAG}" \
+            | jq -r '.assets[] | select(.name=="'"$ASSET_NAME"'") | .browser_download_url')
+          if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
+            echo "Error: Could not find asset '$ASSET_NAME' in Start9Labs/start-technologies release ${START_CLI_TAG}"
+            exit 1
+          fi
+          curl -fsSL \
+            -H "Authorization: token ${{ github.token }}" \
+            -H "Accept: application/octet-stream" \
+            "$DOWNLOAD_URL" -o /tmp/start-cli
+          sudo install -m 755 /tmp/start-cli /usr/local/bin/start-cli
+          rm /tmp/start-cli
+          echo ""
+          echo "start-cli: $(start-cli --version)"
 
       - name: Install npm dependencies
         # `npm install` (not `npm ci`) so git dependencies resolve cleanly.
