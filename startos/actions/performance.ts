@@ -32,9 +32,9 @@ const JOB_REFRESH_KEY = 'JOB_REFRESH_INTERVAL_MS'
 const DIFFICULTY_CHECK_KEY = 'DIFFICULTY_CHECK_INTERVAL_MS'
 const WORK_REFRESH_KEY = 'WORK_REFRESH_INTERVAL_MS'
 
-const DEFAULT_JOB_REFRESH_MS = 30000
+const DEFAULT_JOB_REFRESH_MS = 1000
 const DEFAULT_DIFFICULTY_CHECK_MS = 60000
-const DEFAULT_WORK_REFRESH_MS = 1000
+const DEFAULT_WORK_REFRESH_MS = 500
 
 function parsePositiveInt(raw: string | undefined, fallback: number): number {
   if (!raw) return fallback
@@ -50,7 +50,7 @@ export const inputSpec = InputSpec.of({
       'How often each connected miner receives a fresh mining.notify with an advanced ntime. Lower values (5000-10000 ms) help high-end ASICs (Bitaxe Gamma, Antminer S21) keep their nonce search window fresh. The refresh does not clear in-flight jobs between block heights, so a faster cadence is safe - it costs one extra getblocktemplate per miner per tick. Hard floor 1000 ms, pool default 30000.',
     required: true,
     default: DEFAULT_JOB_REFRESH_MS,
-    min: 1000,
+    min: 500,
     max: 600000,
     step: 500,
     integer: true,

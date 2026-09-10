@@ -11,8 +11,8 @@ export const inputSpec = InputSpec.of({
     description:
       'The pool name returned by the GET /pool/identity endpoint for the dashboard and reported to every mempool explorer instance known from the registry below, so blocks this pool finds get attributed to it network-wide. Never written into the coinbase -- any extra coinbase output would invalidate the per-block UTXO attestation.',
     required: true,
-    default: 'Elektron-Pool on StartOS',
-    placeholder: 'Elektron-Pool on StartOS',
+    default: 'Elektron Pool on StartOS',
+    placeholder: 'Elektron Pool on StartOS',
     maxLength: 100,
     patterns: [utils.Patterns.ascii],
   }),
@@ -22,14 +22,14 @@ export const inputSpec = InputSpec.of({
       'Optional public URL for this pool, returned by GET /pool/identity alongside the Pool Identifier and used the same way for network-wide block attribution.',
     required: false,
     default: null,
-    placeholder: 'https://solopool.elektron-net.org',
+    placeholder: 'https://solopool3.elektron-net.org',
   }),
   MEMPOOL_REGISTRY_URL: Value.text({
     name: 'Mempool Registry URL',
     description:
       'Base URL of the shared elektron-net-registry repo (raw file content, no trailing slash) used to discover known mempool explorer instances to report found blocks to. Leave empty to use the official registry, which is already the built-in default -- only set this if you run your own fork of the registry.',
     required: false,
-    default: null,
+    default: 'https://raw.githubusercontent.com/kutlusoy/elektron-net-registry/main',
     placeholder:
       'https://raw.githubusercontent.com/kutlusoy/elektron-net-registry/main',
   }),
