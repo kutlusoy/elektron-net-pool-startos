@@ -105,8 +105,15 @@ The package exposes two actions:
 1. **Elektron Node RPC** — RPC URL, port, credentials (user/password *or*
    cookie file), optional ZMQ host, and network selection (`mainnet` /
    `regtest`).
-2. **Configure** — coinbase pool identifier and which Stratum interface
-   address(es) to display on the dashboard.
+2. **Configure** - pool identifier, optional pool URL, optional mempool
+   registry URL (for network-wide block attribution), and which Stratum
+   interface address(es) to display on the dashboard.
+3. **Performance Tuning** - job refresh, work refresh, and vardiff check
+   cadences.
+4. **Hobby Miner Compatibility** - user-agent allow-list and starting
+   difficulty for ESP32-class hobby miners.
+5. **Diagnostic Logging** - per-share coinbase-splice diagnostic hypotheses.
+6. **Log Retention** - how many days of pool log files to keep.
 
 Settings are persisted to `/media/startos/volumes/main/.env` (read-only-mounted
 into the pool container) and `/media/startos/volumes/main/store.json`.

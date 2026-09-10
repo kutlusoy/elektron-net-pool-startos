@@ -21,8 +21,21 @@ const shape = z.object({
   JOB_REFRESH_INTERVAL_MS: z.string().catch('30000'),
   // Vardiff re-evaluation cadence (ms). Hard floor 5000 ms in the pool.
   DIFFICULTY_CHECK_INTERVAL_MS: z.string().catch('60000'),
+  // Cheap, RPC-free work refresh (rotates the pool's reserved BIP320 bits on
+  // the already-cached template, no getblocktemplate call). Hard floor
+  // 500 ms in the pool.
+  WORK_REFRESH_INTERVAL_MS: z.string().catch('1000'),
   API_SECURE: z.literal('false').catch('false'),
   POOL_IDENTIFIER: z.string().catch('Elektron-Pool on StartOS'),
+  // Optional pool URL, returned by GET /pool/identity alongside
+  // POOL_IDENTIFIER for the dashboard and for network-wide block
+  // attribution via the mempool registry below.
+  POOL_URL: z.string().catch(''),
+  // Optional. Base URL of the shared elektron-net-registry repo used to
+  // discover mempool explorer instances to report found blocks to. Already
+  // defaults to the official registry in the pool's own code even if left
+  // empty here.
+  MEMPOOL_REGISTRY_URL: z.string().catch(''),
   NETWORK: z.enum(['mainnet', 'regtest']).catch('mainnet'),
   DEV_FEE_ADDRESS: z.string().catch(''),
   // Hobby-miner allow-list. Comma-separated userAgent substrings
@@ -36,7 +49,7 @@ const shape = z.object({
   HOBBY_MINER_USER_AGENTS: z
     .string()
     .catch('NerdMiner,NerdminerV2,nerdminer,NerdAxe,NerdQAxe'),
-  HOBBY_MINER_DIFFICULTY: z.string().catch('0.001'),
+  HOBBY_MINER_DIFFICULTY: z.string().catch('0.0001'),
   // Per-share diagnostic logging. Comma-separated list of header-
   // reconstruction hypotheses; empty disables all diagnostic output.
   // Operator-facing Diagnostic Logging action edits this string.
