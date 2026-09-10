@@ -38,14 +38,25 @@ other over the internal Docker network, no router/firewall changes required.
      blocks):* `tcp://elektrond.startos:28332`
    - **Network:** `mainnet` (or `regtest` for testing)
 5. Open the **Configure** action and set:
-   - **Pool Identifier** — the string that appears in your coinbase
-     transactions.
+   - **Pool Identifier** - the name returned by the pool's `/pool/identity`
+     endpoint for the dashboard, and reported to every mempool explorer
+     instance known from the registry below so blocks this pool finds get
+     attributed to it network-wide. Never written into the coinbase.
+   - **Pool URL** *(optional)* - a public URL for your pool, returned
+     alongside the Pool Identifier for the same purpose.
+   - **Mempool Registry URL** *(optional)* - base URL of the shared
+     `elektron-net-registry` repo used to discover mempool explorer
+     instances to report found blocks to. Leave empty to use the official
+     registry; only set this if you run your own fork.
    - **Server Display URL** — which of the Stratum interface's plain-TCP
      addresses to show on the dashboard. Defaults to the device's `.local`
      hostname.
    - **Secure Server Display URL** — which TLS address to display for
      `stratum+tls` connections.
 6. Point your mining hardware at the Stratum server.
+7. Open the **Performance Tuning** action to adjust the template push, work
+   refresh, and vardiff cadences if your hardware or node needs different
+   values than the defaults.
 
 The ZMQ-Autoconfig task wired in this package will automatically flip
 `zmqEnabled: true` in Elektron Net's `bitcoin.conf` the first time the pool

@@ -65,9 +65,9 @@ export const inputSpec = InputSpec.of({
   difficulty: Value.number({
     name: 'Hobby Miner Difficulty',
     description:
-      'Starting share difficulty for sessions matched by the user-agent list above. ESP32-class miners (NerdMiner) need values around 0.001 to find any shares inside the dead-client timeout; raise carefully if you have faster hobby hardware.',
+      'Starting share difficulty for sessions matched by the user-agent list above. ESP32-class miners (NerdMiner) need values around 0.0001 to find any shares inside the dead-client timeout; raise carefully if you have faster hobby hardware.',
     required: true,
-    default: 0.001,
+    default: 0.0001,
     min: 0.00001,
     integer: false,
   }),
@@ -93,10 +93,10 @@ export const hobbyMiners = sdk.Action.withInput(
     const env = await envFile.read().once()
     const agents = parseAgents(env?.[ENV_KEY])
     const rawDiff = env?.[DIFFICULTY_KEY]
-    const diff = rawDiff ? Number(rawDiff) : 0.001
+    const diff = rawDiff ? Number(rawDiff) : 0.0001
     return {
       userAgents: agents.length > 0 ? agents : DEFAULT_AGENTS,
-      difficulty: Number.isFinite(diff) ? diff : 0.001,
+      difficulty: Number.isFinite(diff) ? diff : 0.0001,
     }
   },
 
