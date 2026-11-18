@@ -41,7 +41,9 @@ RUN \
     npm prune --production
 
 # ---- Final image ----
-FROM node:24-bookworm-slim
+# trixie: bookworm's nginx 1.22.1 has no fix for the Oct 2026 nginx CVEs yet.
+# The build stage stays on bookworm so native modules link against the older glibc.
+FROM node:24-trixie-slim
 
 ENV NODE_ENV=production
 
